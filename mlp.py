@@ -71,17 +71,13 @@ class MLP:
         self.dW1 = X.T @ dZ1 / m
         self.db1 = np.sum(dZ1, axis=0, keepdims=True) / m
 
-        # TODO: complete gradient descent process
-        self.W1 -= 
-        self.b1 -= 
-        self.W2 -= 
-        self.b2 -= 
     
     def step(self):
-        self.W1 -= self.learning_rate * self.dW1
-        self.b1 -= self.learning_rate * self.db1
-        self.W2 -= self.learning_rate * self.dW2
-        self.b2 -= self.learning_rate * self.db2
+        # TODO: complete gradient descent process
+        self.W1 -= self.learning_rate * 
+        self.b1 -= self.learning_rate * 
+        self.W2 -= self.learning_rate * 
+        self.b2 -= self.learning_rate * 
 
     def train(self, X, y, epochs, batch_size):
         for epoch in range(epochs):
@@ -137,3 +133,4 @@ if __name__ == "__main__":
     print("Test acc :", mlp.evaluate(X_test, y_test))
 
     mlp.save_model("mlp_model.npz")
+
