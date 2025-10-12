@@ -54,7 +54,7 @@ python parallel_render.py
 ### 3. 拼接完整视频
 
 ```bash
-python concat_videos.py
+python concat_videos.py --src renders/mlp1
 ```
 
 自动将所有 epoch 片段拼接成完整的可视化训练视频。
@@ -119,4 +119,5 @@ python viz_infer.py --log-dir runs/mlp1
 ## 🏫 致谢
 
 > 本项目用于南京大学 AIA 社团 2025 年春季学期第一次教学例会。
+
 > 感谢所有参与教学与贡献代码的成员！
