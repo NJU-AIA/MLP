@@ -54,20 +54,20 @@ class MLP:
     def compute_loss(self, y):
         m = y.shape[0]
         eps = 1e-12
-        log_probs = -np.log(self.A2[np.arange(m), y] + eps)
+        log_probs = -np.log(self.Y2[np.arange(m), y] + eps)
         return float(np.sum(log_probs) / m)
 
     def backward(self, X, y):
         m = X.shape[0]
-        y_onehot = np.zeros_like(self.A2)
+        y_onehot = np.zeros_like(self.Y2)
         y_onehot[np.arange(m), y] = 1.0
 
-        dZ2 = self.A2 - y_onehot
-        self.dW2 = self.A1.T @ dZ2 / m
+        dZ2 = self.Y2 - y_onehot
+        self.dW2 = self.Y1.T @ dZ2 / m
         self.db2 = np.sum(dZ2, axis=0, keepdims=True) / m
 
-        dA1 = dZ2 @ self.W2.T
-        dZ1 = dA1 * self.sigmoid_derivative(self.Z1)
+        dY1 = dZ2 @ self.W2.T
+        dZ1 = dY1 * self.sigmoid_derivative(self.Z1)
         self.dW1 = X.T @ dZ1 / m
         self.db1 = np.sum(dZ1, axis=0, keepdims=True) / m
 
