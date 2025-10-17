@@ -74,10 +74,10 @@ class MLP:
     
     def step(self):
         # TODO: complete gradient descent process
-        self.W1 -= self.learning_rate * 
-        self.b1 -= self.learning_rate * 
-        self.W2 -= self.learning_rate * 
-        self.b2 -= self.learning_rate * 
+        self.W1 -= self.learning_rate * 1 # TODO: change 1 into something
+        self.b1 -= self.learning_rate * 1 # TODO: change 1 into something
+        self.W2 -= self.learning_rate * 1 # TODO: change 1 into something
+        self.b2 -= self.learning_rate * 1 # TODO: change 1 into something
 
     def train(self, X, y, epochs, batch_size):
         for epoch in range(epochs):
