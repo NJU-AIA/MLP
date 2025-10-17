@@ -9,6 +9,14 @@ from PIL import Image
 def sigmoid(z): 
     return 1.0 / (1.0 + np.exp(-z))
 
+def softmax(z):
+    """数值稳定版 softmax，输入 1D 向量，返回概率"""
+    z = np.asarray(z, dtype=float)
+    z = z - np.max(z)          # 防止溢出
+    e = np.exp(z)
+    s = e / np.sum(e)
+    return s
+
 def norm01(x):
     x = np.asarray(x, dtype=float)
     mn, mx = float(np.min(x)), float(np.max(x))
@@ -367,27 +375,31 @@ class NetworkVizBase(Scene):
 
     # ----- 前向（用于展示贡献 + 点亮） -----
     def forward_and_visualize(self, x, W1, b1, W2, b2):
+        # 隐层
         Z1 = x @ W1 + b1[0]
         A1 = sigmoid(Z1)
         self.contrib_in_to_hidden(x, W1, run_time=0.5)
         self.play(*[self.neurons[j].animate.set_fill(YELLOW, opacity=float(A1[j]))
                     for j in range(self.hidden_size)], run_time=0.35)
 
+        # 输出层 logits -> softmax 概率
         Z2 = A1 @ W2 + b2[0]
         self.contrib_hidden_to_out(A1, W2, run_time=0.7)
+        P = softmax(Z2)
 
         out_values = VGroup()
         for k in range(self.output_size):
-            val = DecimalNumber(float(Z2[k]), num_decimal_places=2, font_size=28, include_sign=True)
+            val = DecimalNumber(float(P[k]), num_decimal_places=2, include_sign=False, font_size=28)
             val.next_to(self.out_neurons[k], RIGHT, buff=0.16)
             out_values.add(val)
-        # self.wait(0.3)
+
         self.play(FadeIn(out_values), run_time=0.3)
 
-        Z2_norm = norm01(Z2)
-        self.play(*[self.out_neurons[k].animate.set_fill(YELLOW, opacity=(0.15 + 0.85*float(Z2_norm[k])))
+        self.play(*[self.out_neurons[k].animate.set_fill(YELLOW, opacity=(0.15 + 0.85*float(P[k])))
                     for k in range(self.output_size)], run_time=0.5)
+
         return out_values, Z2
+
 
     # ----- Loss 可视化 -----
     def show_loss_list(self, out_values, losses):

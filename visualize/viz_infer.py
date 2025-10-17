@@ -51,21 +51,30 @@ class MLPInferenceScene(NetworkVizBase):
         self._test_ubyte = test_ubyte
 
     def construct(self):
-        assert self._log_dir, "log_dir 未指定（--log-dir 或环境变量 MLP_LOG_DIR）"
-        meta = load_meta(self._log_dir)
+        # --- 不再强制要求 log_dir ---
+        meta = {}
+        if self._log_dir:
+            meta = load_meta(self._log_dir)
 
-        # 同步网络参数（仅用于可视化 UI）
-        self.input_size = int(meta.get("input_size", 784))
-        self.hidden_size = int(meta.get("hidden_size", 8))
-        self.output_size = int(meta.get("output_size", 10))
+        # 模型路径解析：优先 --model；否则从 log_dir 取默认
+        if self._model_path:
+            model_path = self._model_path
+        else:
+            if not self._log_dir:
+                raise ValueError("未提供 --model 且没有 --log-dir，无法确定模型路径。")
+            model_path = os.path.join(self._log_dir, "model_last.npz")
+
+        W1, b1, W2, b2 = load_model_npz(model_path)
+
+        # --- 同步网络参数 ---
+        # 若有 meta 则优先用 meta；否则用权重形状推断
+        self.input_size  = int(meta.get("input_size",  W1.shape[0]))
+        self.hidden_size = int(meta.get("hidden_size", W1.shape[1]))
+        self.output_size = int(meta.get("output_size", W2.shape[1]))
         self.learning_rate = float(meta.get("learning_rate", 0.1))
         self.topk_w1 = int(meta.get("topk_w1", 50))
 
-        # 模型
-        model_path = self._model_path or os.path.join(self._log_dir, "model_last.npz")
-        W1, b1, W2, b2 = load_model_npz(model_path)
-
-        # ===== 图片选择逻辑（满足你的三段优先级） =====
+        # ===== 图片选择逻辑 =====
         if self._image_file:  # 1) 任意图片
             img = load_gray_image(self._image_file, target_size=28, invert=self._invert)
         elif self._index is not None:  # 2) 测试集索引
@@ -76,7 +85,13 @@ class MLPInferenceScene(NetworkVizBase):
                     f"请通过 --test-ubyte 显式传入，例如：--test-ubyte assets/MNIST/raw/t10k-images-idx3-ubyte"
                 )
             img = load_mnist_image(test_path, self._index)  # (28,28), [0,1]
-        else:  # 3) 回退到训练时保存的 sample_for_viz.npy（对应 meta.viz_image_index）
+        else:
+            # 3) 仅当有 log_dir 时才回退使用 sample_for_viz.npy
+            if not self._log_dir:
+                raise ValueError(
+                    "未提供 --image-file 或 --index，且没有 --log-dir 可用作回退样例。\n"
+                    "请至少指定 --image-file 或 --index（可选配合 --test-ubyte）。"
+                )
             img = load_sample_image(self._log_dir)  # (28,28), [0,1]
 
         # UI
@@ -95,17 +110,19 @@ class MLPInferenceScene(NetworkVizBase):
         x = img.flatten().astype(np.float64)
         out_values, Z2 = self.forward_and_visualize(x, W1, b1, W2, b2)
 
-        # Top-1 预测显示
+        # Top-1 预测显示（这里用 logits 的 argmax；如果你已改为 softmax 展示，也可对 P 做 argmax）
         pred = int(np.argmax(Z2))
         label_txt = Text(f"Prediction: {pred}", font_size=36, color=YELLOW)\
                         .next_to(self.out_neurons, DOWN, buff=0.8).align_to(self.out_neurons, LEFT)
         self.play(FadeIn(label_txt, shift=UP*0.2), run_time=0.35)
         self.wait(1.5)
 
+
 def parse_cli():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--log-dir", required=True, help="训练日志目录（包含 model_last.npz / sample_for_viz.npy / meta.json）")
-    ap.add_argument("--model", default=None, help="模型 npz 路径，默认读取 log_dir/model_last.npz")
+    # 1) 不再 required=True
+    ap.add_argument("--log-dir", help="训练日志目录（包含 model_last.npz / sample_for_viz.npy / meta.json）")
+    ap.add_argument("--model", default=None, help="模型 npz 路径，若提供则可不传 --log-dir")
     # 通用图片输入
     ap.add_argument("--image-file", default=None, help="任意灰度图片路径（自动转 28x28 并归一化）")
     ap.add_argument("--invert", action="store_true", help="对 --image-file 的灰度进行反相（黑白互换）")
@@ -118,13 +135,23 @@ def parse_cli():
     ap.add_argument("--out", default=None, help="输出文件名（不含扩展名）")
     ap.add_argument("--outdir", default=None, help="最终视频输出文件夹")
     ap.add_argument("--tmpdir", default=None, help="中间文件根目录（并行时用于隔离缓存）")
-    return ap.parse_args()
+    args = ap.parse_args()
+
+    # 新增：最小必备条件校验
+    if not args.log_dir and not args.model:
+        ap.error("必须至少提供 --model 或 --log-dir 其中之一。")
+
+    return args
+
 
 if __name__ == "__main__":
     args = parse_cli()
-    os.environ["MLP_LOG_DIR"] = args.log_dir
     from manim import config
     config.quality = args.quality
+
+    # 仅在存在 log_dir 时设置
+    if args.log_dir:
+        os.environ["MLP_LOG_DIR"] = args.log_dir
 
     if args.out and args.outdir:
         full_path = Path(args.outdir).resolve() / f"{args.out}.mp4"
