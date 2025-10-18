@@ -38,7 +38,7 @@ python mlp.py
 ### 1. 生成训练日志
 
 ```bash
-python train_with_logs.py
+python train_with_log.py
 ```
 
 该脚本在 `runs/mlp1/` 目录下记录模型训练的参数、梯度、损失、样本图像等信息。
@@ -121,3 +121,4 @@ python viz_infer.py --log-dir runs/mlp1
 > 本项目用于南京大学 AIA 社团 2025 年秋季学期第一次教学例会。
 
 > 感谢所有参与教学与贡献代码的成员！
+
